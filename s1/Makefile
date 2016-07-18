@@ -1,7 +1,7 @@
 CC=clang
 CFLAGS=-Wall -Werror
 
-ALL_BINARIES=typeDouble unsignedDouble guessing maths challenge
+ALL_BINARIES=typeDouble unsignedDouble guessing maths challenge game simple
 
 all:	$(ALL_BINARIES)
 
@@ -21,4 +21,10 @@ maths:				maths.c
 	$(CC) $(CFLAGS) -o $@ $^
 
 challenge:			challenge.c
+	$(CC) $(CFLAGS) -o $@ $^
+
+game:				game.c
+	$(CC) $(CFLAGS) -o $@ $^
+
+simple:				simple.c
 	$(CC) $(CFLAGS) -o $@ $^
