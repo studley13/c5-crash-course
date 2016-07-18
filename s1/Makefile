@@ -1,22 +1,24 @@
 CC=clang
 CFLAGS=-Wall -Werror
 
-all:	simple types user
+ALL_BINARIES=typeDouble unsignedDouble guessing maths challenge
+
+all:	$(ALL_BINARIES)
 
 clean:
-	rm -rf simple types user *.o
+	rm -rf *.o $(ALL_BINARIES)
 
-simple.o:	simple.c
-
-simple:		simple.o
+typeDouble:			typeDouble.c
 	$(CC) $(CFLAGS) -o $@ $^
 
-user.o:		user.c
-
-user:		user.o
+unsignedDouble:		unsignedDouble.c
 	$(CC) $(CFLAGS) -o $@ $^
 
-types.o:	types.c
+guessing:			guessing.c
+	$(CC) $(CFLAGS) -o $@ $^
 
-types:		types.o
+maths:				maths.c
+	$(CC) $(CFLAGS) -o $@ $^
+
+challenge:			challenge.c
 	$(CC) $(CFLAGS) -o $@ $^
