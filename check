@@ -1,0 +1,315 @@
+#!/bin/bash
+
+# C Crash Course - Setup Script
+#
+# This script will check that your operating environment
+# is properly set up to for the C Crash Course
+
+# Checks for software
+#  - nano
+#  - clang
+#  - make
+#  - nc
+
+# Runs tests
+#  - compile with clang/llvm
+#  - compile with makefile
+
+tempDir=`mktemp -d`
+
+# Terminal Colours
+
+# Color numbers
+C_DEFAULT="9"
+C_BLACK="0"
+C_RED="1"
+C_GREEN="2"
+C_YELLOW="3"
+C_BLUE="4"
+C_MAGENTA="5"
+C_CYAN="6"
+C_WHITE="7"
+
+D_BOLD="\e[1m"
+D_UNDERLINE="\e[4m"
+
+# Print text in color
+printColor () {
+    text=$1 # Get text to print
+
+    if [[ $# -ge 2 ]]; then
+        colFG="\e[3${2}m"
+    else
+        colFG=""
+    fi
+
+    if [[ $# -ge 3 ]]; then
+        colBG="\e[4${3}m"
+    else
+        colBG=""
+    fi
+
+    if [[ $# -ge 4 ]]; then
+        style=$4
+    else
+        style=""
+    fi
+
+    printf "\e[0m${colFG}${colBG}${style}${text}\e[0m"
+}
+
+# Color presets
+
+pNormal () {
+    printColor "$1" $C_CYAN
+}
+
+pHighlight () {
+    printColor "$1" $C_YELLOW $C_DEFAULT $D_BOLD
+}
+
+pGood () {
+    printColor "$1" $C_GREEN $C_DEFAULT $D_BOLD
+}
+
+pBad () {
+    printColor "$1" $C_RED $C_DEFAULT $D_BOLD
+}
+
+pVGood () {
+    printColor "$1" $C_GREEN $C_DEFAULT "${D_BOLD}${D_UNDERLINE}"
+}
+
+pVBad () {
+    printColor "$1" $C_RED $C_DEFAULT "${D_BOLD}${D_UNDERLINE}"
+}
+
+# Check for ability to install
+checkTryInstall () {
+    tryInstall=false
+
+    os=`uname -s`
+
+    pNormal "Checking ability to install missing software...\n"
+
+
+    if [[ $UID == 0 ]] && [[ $os == "Linux" ]] && [[ $(which apt-get) ]]; then
+        tryInstall=true
+    fi
+
+    if [[ $UID == 0 ]]; then
+        userColor=$C_GREEN
+    else
+        userColor=$C_YELLOW
+    fi
+
+    if [[ $os == "Linux" ]]; then
+        osColor=$C_GREEN
+    else
+        osColor=$C_YELLOW
+    fi
+
+    pNormal "Running as user "
+    printColor "$USER" $userColor $C_DEFAULT $D_BOLD
+    pNormal " on operating system "
+    printColor "${os}" $osColor $C_DEFAULT $D_BOLD
+    pNormal ".\n"
+
+    if [[ $tryInstall == true ]]; then
+        pVGood "Will"
+        pGood " attempt to install missing software.\n\n"
+
+        return 0
+    else
+        pVBad "Will not"
+        pBad " attempt to install missing software.\n\n"
+
+        return 1
+    fi
+}
+
+# Check for an installed peice of software
+
+checkSoftware () {
+    command=$1
+    package=$2
+    install=$3
+
+    pNormal "Looking for installed "
+    pHighlight "$command"
+    pNormal "..."
+
+    if [[ $(which $command) ]]; then
+        pGood "FOUND\n"
+    else
+        pBad "MISSING\n"
+
+        # Attempt install
+        if [[ $install == true ]]; then
+            pNormal "Attempting install of "
+            pHighlight "$package"
+            pNormal "..."
+
+            # Install the package
+            apt-get install -y $package 2> "${tempDir}/${package}-error.log" > "${tempDir}/${package}.log"
+
+            if [[ $? -ne 0 ]]; then
+                pBad "FAILED"
+                pNormal ".\n\n"
+                pNormal "Please install "
+                pHighlight "$package"
+                pNormal " manually.\n\n"
+                exit 1
+            else
+                pGood "INSTALLED"
+                pNormal ".\n"
+            fi
+        else
+            pNormal "Please install "
+            pHighlight "$package"
+            pNormal ".\n\n"
+            exit 1
+        fi
+    fi
+}
+
+# Determine if a test passes
+
+testCheck () {
+    if [[ $? -ne 0 ]]; then
+        pBad "FAILED\n\n"
+        exit 1
+    else
+        pGood "PASSED\n"
+    fi
+}
+
+# Check a compile with clang
+
+testClangCompile () {
+    pNormal "Testing compile with "
+    pHighlight "clang"
+    pNormal "..."
+
+    echo "LyoKICogdGVzdENvbXBpbGUuYwogKgogKiBUZXN0IHRvIHNlZSB0aGF0IGNsYW5nIGNhbiBiZSB1\
+c2VkIHRvIGNvbXBpbGUgQyBzb2Z0d2FyZQogKgogKiBUaGlzIHByb2dyYW0gc2hvdWxkIHNpbXBs\
+eSBwcmludCBvdXQgdGhlIHRleHQgImNvbXBpbGVkICsgcmFuIgogKgogKiBBdXRob3I6ICBDdXJ0\
+aXMgTWlsbGFyCiAqIERhdGU6ICAgIDEgSnVseSAyMDE2CiAqLwoKI2luY2x1ZGUgPHN0ZGlvLmg+\
+CiNpbmNsdWRlIDxzdGRsaWIuaD4KI2luY2x1ZGUgPGFzc2VydC5oPgoKaW50IG1haW4gKGludCBh\
+cmdjLCBjaGFyICoqYXJndikgewoKICAgIHByaW50ZigiY29tcGlsZWQgKyByYW5cbiIpOwoKICAg\
+IHJldHVybiBFWElUX1NVQ0NFU1M7Cn0K" | base64 --decode > "${tempDir}/testClang.c"
+
+    clang -Wall -Werror -o "${tempDir}/testClang" "${tempDir}/testClang.c" 2> "${tempDir}/clang-compile-error.log" > "${tempDir}/clang-compile.log"
+
+    testCheck
+
+    pNormal "Testing compiled binary..."
+
+    "${tempDir}/testClang" 2> "${tempDir}/binary-error.log" > "${tempDir}/binary.log"
+
+    testCheck
+}
+
+testMakeCompile () {
+    pNormal "Testing compile with "
+    pHighlight "make"
+    pNormal " and "
+    pHighlight "clang"
+    pNormal "..."
+
+    echo "Q0M9Y2xhbmcKQ0ZMQUdTPS1XYWxsIC1XZXJyb3IKCmFsbDogdGVzdENsYW5nCgp0ZXN0Q2xhbmcu\
+bzogdGVzdENsYW5nLmMKCnRlc3RDbGFuZzoJdGVzdENsYW5nLm8KCSQoQ0MpICQoQ0ZMQUdTKSAt\
+byAkQCAkXgo=" | base64 --decode > "${tempDir}/Makefile"
+
+    pushd "${tempDir}" > /dev/null
+    make 2> "${tempDir}/make-error.log" > "${tempDir}/make.log"
+    testCheck
+    popd > /dev/null
+
+    pNormal "Testing compiled binary..."
+
+    "${tempDir}/testClang" 2> "${tempDir}/make-binary-error.log" > "${tempDir}/make-binary.log"
+
+    testCheck
+}
+
+makeNanorc () {
+    pNormal "Creating config files for "
+    pHighlight "nano"
+    pNormal "..."
+
+    echo "IyBCYXNpYyBOYW5vIENvbmZpZ3VyYXRpb24gRmlsZSBmb3IgQzUKCnNldCBhdXRvaW5kZW50CnNl\
+dCBiYWNrdXAKc2V0IGNvbnN0CnNldCBtb3VzZQpzZXQgc21hcnRob21lCnNldCB0YWJzaXplIDQK\
+c2V0IHRhYnN0b3NwYWNlcwoKaW5jbHVkZSAifi8ubmFuby9jLm5hbm9yYyIKaW5jbHVkZSAifi8u\
+bmFuby9tYWtlZmlsZS5uYW5vcmMiCg==" | base64 --decode >> "${HOME}/.nanorc"
+
+    mkdir -p "${HOME}/.nano"
+
+    echo "IyMgSGVyZSBpcyBhbiBleGFtcGxlIGZvciBDL0MrKy4KIyMKc3ludGF4ICJjIiAiXC4oYyhjfHBw\
+fHh4KT98QykkIiAiXC4oaChofHBwfHh4KT98SCkkIiAiXC5paT8kIgpjb2xvciBicmlnaHRyZWQg\
+Ilw8W0EtWl9dWzAtOUEtWl9dK1w+IiAKY29sb3IgZ3JlZW4gIlw8KGZsb2F0fGRvdWJsZXxib29s\
+fGNoYXJ8aW50fHNob3J0fGxvbmd8c2l6ZW9mfGVudW18dm9pZHxhdXRvfHN0YXRpY3xjb25zdHxz\
+dHJ1Y3R8dW5pb258dHlwZWRlZnxleHRlcm58KHVuKT9zaWduZWR8aW5saW5lKVw+Igpjb2xvciBn\
+cmVlbiAiXDwoKHM/c2l6ZSl8KCh1Xz8pP2ludCg4fDE2fDMyfDY0fHB0cikpKV90XD4iCmNvbG9y\
+IGdyZWVuICJcPChjbGFzc3xuYW1lc3BhY2V8dGVtcGxhdGV8cHVibGljfHByb3RlY3RlZHxwcml2\
+YXRlfHR5cGVuYW1lfHRoaXN8ZnJpZW5kfHZpcnR1YWx8dXNpbmd8bXV0YWJsZXx2b2xhdGlsZXxy\
+ZWdpc3RlcnxleHBsaWNpdClcPiIKY29sb3IgYnJpZ2h0eWVsbG93ICJcPChmb3J8aWZ8d2hpbGV8\
+ZG98ZWxzZXxjYXNlfGRlZmF1bHR8c3dpdGNoKVw+Igpjb2xvciBicmlnaHR5ZWxsb3cgIlw8KHRy\
+eXx0aHJvd3xjYXRjaHxvcGVyYXRvcnxuZXd8ZGVsZXRlKVw+Igpjb2xvciBtYWdlbnRhICJcPChn\
+b3RvfGNvbnRpbnVlfGJyZWFrfHJldHVybilcPiIKY29sb3IgYnJpZ2h0Y3lhbiAiXltbOnNwYWNl\
+Ol1dKiNbWzpzcGFjZTpdXSooZGVmaW5lfGluY2x1ZGUoX25leHQpP3wodW58aWZuPylkZWZ8ZW5k\
+aWZ8ZWwoaWZ8c2UpfGlmfHdhcm5pbmd8ZXJyb3J8cHJhZ21hKSIKY29sb3IgYnJpZ2h0bWFnZW50\
+YSAiJyhbXidcXXwoXFxbIidhYmZucnR2XFxdKSknIiAiJ1xcKChbMC0zXT9bMC03XXsxLDJ9KSkn\
+IiAiJ1xceFswLTlBLUZhLWZdezEsMn0nIgojIwojIyBHQ0MgYnVpbHRpbnMKY29sb3IgY3lhbiAi\
+X19hdHRyaWJ1dGVfX1tbOnNwYWNlOl1dKlwoXChbXildKlwpXCkiICJfXyhhbGlnbmVkfGFzbXxi\
+dWlsdGlufGhpZGRlbnxpbmxpbmV8cGFja2VkfHJlc3RyaWN0fHNlY3Rpb258dHlwZW9mfHdlYWsp\
+X18iCiMjCiMjIFN0cmluZyBoaWdobGlnaHRpbmcuICBZb3Ugd2lsbCBpbiBnZW5lcmFsIHdhbnQg\
+eW91ciBjb21tZW50cyBhbmQKIyMgc3RyaW5ncyB0byBjb21lIGxhc3QsIGJlY2F1c2Ugc3ludGF4\
+IGhpZ2hsaWdodGluZyBydWxlcyB3aWxsIGJlCiMjIGFwcGxpZWQgaW4gdGhlIG9yZGVyIHRoZXkg\
+YXJlIHJlYWQgaW4uCmNvbG9yIGJyaWdodHllbGxvdyAiPFtePSAJXSo+IiAiIihcXC58W14iXSkq\
+IiIKIyMKIyMgVGhpcyBzdHJpbmcgaXMgVkVSWSByZXNvdXJjZSBpbnRlbnNpdmUhCmNvbG9yIGJy\
+aWdodHllbGxvdyBzdGFydD0iIihcXC58W14iXSkqXFxbWzpzcGFjZTpdXSokIiBlbmQ9Il4oXFwu\
+fFteIl0pKiIiCgojIyBDb21tZW50IGhpZ2hsaWdodGluZwpjb2xvciBicmlnaHRibHVlICIvLy4q\
+Igpjb2xvciBicmlnaHRibHVlIHN0YXJ0PSIvXCoiIGVuZD0iXCovIgoKIyMgVHJhaWxpbmcgd2hp\
+dGVzcGFjZQpjb2xvciAsZ3JlZW4gIltbOnNwYWNlOl1dKyQiCg==" | base64 --decode > "${HOME}/.nano/c.nanorc"
+
+    echo "IyB1bmF0dHJpYnV0ZWQgc3ludGF4IGhpZ2hsaWdodGluZyBleGFtcGxlIGZyb20gd2lraS5saW51\
+eGhlbHAubmV0LwoKc3ludGF4ICJtYWtlZmlsZSIgIk1ha2VmaWxlW14vXSokIgpjb2xvciByZWQg\
+Ils6PV0iCmNvbG9yIG1hZ2VudGEgIlw8KGlmfGlmZXF8ZWxzZXxlbmRpZilcPiIKY29sb3IgYmx1\
+ZSAiXCQrW3soXVthLXpBLVowLTlfLV0rW30pXSIKY29sb3IgYnJpZ2h0Ymx1ZSAiXlteIAldKzoi\
+CmNvbG9yIGdyZWVuICIjLiokIgo=" | base64 --decode > "${HOME}/.nano/makefile.nanorc"
+
+    pGood "DONE\n"
+
+    nano "${tempDir}/testClang.c"
+
+    pNormal "Checking "
+    pHighlight "nano"
+    pNormal " config..."
+
+    pGood "DONE\n"
+}
+
+pNormal "All temporary files stored in " $C_CYAN
+pHighlight "$tempDir" $C_YELLOW $C_DEFAULT $D_BOLD
+pNormal ".\n\n" $C_CYAN
+
+tryInstall=true
+
+checkTryInstall
+if [[ $? -ne 0 ]]; then
+    tryInstall=false
+fi
+
+checkSoftware base64 base64 $tryInstall
+checkSoftware clang clang $tryInstall
+testClangCompile
+checkSoftware make make $tryInstall
+testMakeCompile
+checkSoftware nano nano $tryInstall
+makeNanorc
+checkSoftware nc netcat-traditional $tryInstall
+
+pNormal "\nAll tests "
+pVGood "PASSED"
+pNormal ". You're ready to start the crash course.\n\n"
